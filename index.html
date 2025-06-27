@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Design Practice Canvas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the canvas and drawing tools */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+            overflow: hidden; /* Prevent body scroll */
+        }
+        canvas {
+            border-radius: 0.75rem; /* rounded-xl */
+            background-color: #ffffff; /* White canvas background */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            cursor: crosshair; /* Crosshair cursor for drawing */
+        }
+        /* Custom scrollbar for tool panel if content overflows */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #e2e8f0; /* light-blue-100 */
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Top Bar for Tools -->
+    <div class="bg-white p-4 shadow-md flex flex-wrap items-center justify-center space-x-2 sm:space-x-4 rounded-b-xl">
+        <!-- Drawing Tools -->
+        <button id="tool-freehand" class="tool-button bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors duration-200" title="Freehand Draw">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2zM9 3v2m6-2v2M9 21v-2m6 2v-2m-8-9h8m-8 4h8m-8 4h8"></path></svg>
+        </button>
+        <button id="tool-rectangle" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Rectangle">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path></svg>
+        </button>
+        <button id="tool-circle" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Circle">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </button>
+        <button id="tool-line" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Line">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        </button>
+        <button id="tool-text" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Add Text">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+        </button>
+        <button id="tool-select" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Select/Move Elements">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11l-3-3m0 0l-3 3m3-3v4m-3 3h8M4 14h.01M17 14h.01M6 14h.01M19 14h.01M12 6v.01M12 18v.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </button>
+
+        <!-- New Tools -->
+        <button id="tool-eraser" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Eraser">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+        <button id="tool-laser" class="tool-button text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-200" title="Laser Pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.132l-3.39 3.39m0 0l3.39 3.39M12 18.75V21m-4.752-9.132l-3.39-3.39m0 0l3.39-3.39M12 5.25V3m4.752 9.132l3.39-3.39m0 0l-3.39-3.39M12 12h.01M12 7.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9z"></path></svg>
+        </button>
+
+
+        <!-- Action Buttons -->
+        <button id="clear-canvas" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors duration-200" title="Clear Canvas">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+    </div>
+
+    <!-- Main Content Area: Sidebar and Canvas -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Left Sidebar for Drawing Options -->
+        <div class="w-64 bg-white p-4 shadow-md overflow-y-auto custom-scroll rounded-r-xl flex-shrink-0">
+            <h3 class="text-lg font-semibold mb-4">Options</h3>
+
+            <!-- Current State Indicators (New!) -->
+            <div class="mb-6 border-b pb-4 border-gray-200">
+                <p class="text-sm text-gray-800 mb-2">Current Tool: <span id="current-tool-display" class="font-bold text-blue-600"></span></p>
+                <p class="text-sm text-gray-800 mb-2 flex items-center">Stroke: <span id="current-stroke-color-display" class="font-bold inline-block w-4 h-4 rounded-full border border-gray-400 ml-2" style="background-color: #000000;"></span> <span id="current-stroke-color-hex" class="ml-1 text-gray-600"></span></p>
+                <p class="text-sm text-gray-800 flex items-center">Fill: <span id="current-fill-color-display" class="font-bold inline-block w-4 h-4 rounded-full border border-gray-400 ml-2" style="background-color: #FFFFFF;"></span> <span id="current-fill-color-hex" class="ml-1 text-gray-600"></span></p>
+            </div>
+
+            <!-- Stroke Color -->
+            <div class="mb-6">
+                <label for="stroke-color" class="block text-gray-700 font-medium mb-2">Stroke Color</label>
+                <div class="grid grid-cols-5 gap-2">
+                    <input type="color" id="stroke-color" value="#000000" class="w-full h-8 rounded-md border border-gray-300 cursor-pointer" title="Select Stroke Color">
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #000000;" data-color="#000000" title="Black Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #EF4444;" data-color="#EF4444" title="Red Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #3B82F6;" data-color="#3B82F6" title="Blue Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #22C55E;" data-color="#22C55E" title="Green Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #F59E0B;" data-color="#F59E0B" title="Amber Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #6366F1;" data-color="#6366F1" title="Indigo Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #EC4899;" data-color="#EC4899" title="Pink Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #14B8A6;" data-color="#14B8A6" title="Teal Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #A855F7;" data-color="#A855F7" title="Purple Stroke"></button>
+                    <button class="color-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #000000;" data-color="#000000" title="Black Stroke"></button>
+                </div>
+            </div>
+
+            <!-- Fill Color -->
+            <div class="mb-6">
+                <label for="fill-color" class="block text-gray-700 font-medium mb-2">Fill Color</label>
+                <div class="grid grid-cols-5 gap-2">
+                    <input type="color" id="fill-color" value="#FFFFFF" class="w-full h-8 rounded-md border border-gray-300 cursor-pointer" title="Select Fill Color">
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #FFFFFF;" data-color="#FFFFFF" title="White Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #FEE2E2;" data-color="#FEE2E2" title="Light Red Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #DBEAFE;" data-color="#DBEAFE" title="Light Blue Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #D1FAE5;" data-color="#D1FAE5" title="Light Green Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #FEF3C7;" data-color="#FEF3C7" title="Light Amber Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #E0E7FF;" data-color="#E0E7FF" title="Light Indigo Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #FCE7F3;" data-color="#FCE7F3" title="Light Pink Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #CCFBF1;" data-color="#CCFBF1" title="Light Teal Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #F3E8FF;" data-color="#F3E8FF" title="Light Purple Fill"></button>
+                    <button class="fill-swatch w-8 h-8 rounded-md border border-gray-300 cursor-pointer" style="background-color: #6B7280;" data-color="#6B7280" title="Gray Fill"></button>
+                </div>
+            </div>
+
+            <!-- Stroke Width -->
+            <div class="mb-6">
+                <label for="stroke-width" class="block text-gray-700 font-medium mb-2">Stroke Width</label>
+                <div class="flex items-center space-x-2">
+                    <button id="decrease-stroke" class="bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 transition-colors duration-200" title="Decrease Stroke Width">-</button>
+                    <input type="range" id="stroke-width" min="1" max="20" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm" title="Adjust Stroke Width">
+                    <button id="increase-stroke" class="bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 transition-colors duration-200" title="Increase Stroke Width">+</button>
+                    <span id="stroke-width-value" class="text-sm font-semibold" title="Current Stroke Width">2px</span>
+                </div>
+            </div>
+
+            <!-- Opacity -->
+            <div class="mb-6">
+                <label for="opacity" class="block text-gray-700 font-medium mb-2">Opacity</label>
+                <input type="range" id="opacity" min="0" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm" title="Adjust Element Opacity">
+                <span id="opacity-value" class="text-sm font-semibold" title="Current Opacity">100%</span>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 flex justify-center items-center p-4">
+            <canvas id="designCanvas" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    <!-- Hidden Text Input Field (for adding/editing text) -->
+    <textarea id="text-input-field" class="absolute hidden p-2 bg-white border border-blue-500 rounded-md resize-none shadow-lg z-10"
+              style="font-family: 'Inter', sans-serif;"></textarea>
+
+    <script>
+        // --- Base Element Class ---
+        class BaseElement {
+            constructor(x, y, strokeColor, fillColor, strokeWidth, opacity) {
+                this.x = x;
+                this.y = y;
+                this.strokeColor = strokeColor;
+                this.fillColor = fillColor;
+                this.strokeWidth = strokeWidth;
+                this.opacity = opacity;
+                this.type = 'base'; // Default type, should be overridden
+            }
+
+            draw(ctx) {
+                // This method should be overridden by specific element types
+                console.warn("draw() method not implemented for BaseElement.");
+            }
+
+            containsPoint(px, py) {
+                // This method should be overridden for hit detection
+                return false;
+            }
+
+            // Method to update properties, useful for selection/editing
+            updateProperties(newProps) {
+                Object.assign(this, newProps);
+            }
+        }
+
+        // --- Specific Element Classes ---
+
+        class FreehandElement extends BaseElement {
+            constructor(startX, startY, strokeColor, strokeWidth, opacity) {
+                super(startX, startY, strokeColor, 'transparent', strokeWidth, opacity);
+                this.type = 'freehand';
+                this.points = [{ x: startX, y: startY }];
+            }
+
+            addPoint(x, y) {
+                this.points.push({ x, y });
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.strokeColor;
+                ctx.lineWidth = this.strokeWidth;
+                ctx.globalAlpha = this.opacity;
+                ctx.lineCap = 'round'; // Make freehand lines look smoother
+                ctx.lineJoin = 'round';
+
+                if (this.points.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.points[0].x, this.points[0].y);
+                    for (let i = 1; i < this.points.length; i++) {
+                        ctx.lineTo(this.points[i].x, this.points[i].y);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            containsPoint(px, py) {
+                // Simplified hit detection for freehand: check proximity to any segment
+                const buffer = this.strokeWidth * 2; // Make selection easier
+                for (let i = 0; i < this.points.length - 1; i++) {
+                    const p1 = this.points[i];
+                    const p2 = this.points[i + 1];
+
+                    const L2 = ((p2.x - p1.x) * (p2.x - p1.x)) + ((p2.y - p1.y) * (p2.y - p1.y));
+                    if (L2 === 0) continue; // Skip if it's just a point
+
+                    const t = ((px - p1.x) * (p2.x - p1.x) + (py - p1.y) * (p2.y - p1.y)) / L2;
+                    const projectionX = p1.x + t * (p2.x - p1.x);
+                    const projectionY = p1.y + t * (p2.y - p1.y);
+
+                    const dist = Math.sqrt(Math.pow(px - projectionX, 2) + Math.pow(py - projectionY, 2));
+
+                    if (t >= 0 && t <= 1 && dist < buffer) { // If projection is on segment and close
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        class RectangleElement extends BaseElement {
+            constructor(x, y, width, height, strokeColor, fillColor, strokeWidth, opacity) {
+                super(x, y, strokeColor, fillColor, strokeWidth, opacity);
+                this.type = 'rectangle';
+                this.width = width;
+                this.height = height;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.strokeColor;
+                ctx.fillStyle = this.fillColor;
+                ctx.lineWidth = this.strokeWidth;
+                ctx.globalAlpha = this.opacity;
+                ctx.beginPath();
+                ctx.rect(this.x, this.y, this.width, this.height);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            containsPoint(px, py) {
+                return px >= this.x && px <= this.x + this.width &&
+                       py >= this.y && py <= this.y + this.height;
+            }
+        }
+
+        class CircleElement extends BaseElement {
+            constructor(x, y, radius, strokeColor, fillColor, strokeWidth, opacity) {
+                super(x, y, strokeColor, fillColor, strokeWidth, opacity);
+                this.type = 'circle';
+                this.radius = radius;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.strokeColor;
+                ctx.fillStyle = this.fillColor;
+                ctx.lineWidth = this.strokeWidth;
+                ctx.globalAlpha = this.opacity;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            containsPoint(px, py) {
+                const dist = Math.sqrt(Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2));
+                return dist <= this.radius;
+            }
+        }
+
+        class LineElement extends BaseElement {
+            constructor(x1, y1, x2, y2, strokeColor, strokeWidth, opacity) {
+                super(x1, y1, strokeColor, 'transparent', strokeWidth, opacity);
+                this.type = 'line';
+                this.x1 = x1;
+                this.y1 = y1;
+                this.x2 = x2;
+                this.y2 = y2;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.strokeColor;
+                ctx.lineWidth = this.strokeWidth;
+                ctx.globalAlpha = this.opacity;
+                ctx.beginPath();
+                ctx.moveTo(this.x1, this.y1);
+                ctx.lineTo(this.x2, this.y2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            containsPoint(px, py) {
+                // More accurate check for line: calculate distance from point to line segment
+                const L2 = ((this.x2 - this.x1) * (this.x2 - this.x1)) + ((this.y2 - this.y1) * (this.y2 - this.y1));
+                if (L2 === 0) { // It's a point, not a line
+                    const dist = Math.sqrt(Math.pow(px - this.x1, 2) + Math.pow(py - this.y1, 2));
+                    return dist < (this.strokeWidth + 5); // Consider a small buffer around the point
+                }
+                const t = ((px - this.x1) * (this.x2 - this.x1) + (py - this.y1) * (this.y2 - this.y1)) / L2;
+                const projectionX = this.x1 + t * (this.x2 - this.x1);
+                const projectionY = this.y1 + t * (this.y2 - this.y1);
+
+                const dist = Math.sqrt(Math.pow(px - projectionX, 2) + Math.pow(py - projectionY, 2));
+
+                const buffer = Math.max(this.strokeWidth / 2, 5); // Buffer for easier selection
+
+                return t >= 0 && t <= 1 && dist < buffer; // If projection is on segment and close
+            }
+
+            // Adjust coordinates when moving (line elements need both endpoints moved)
+            move(dx, dy) {
+                this.x1 += dx;
+                this.y1 += dy;
+                this.x2 += dx;
+                this.y2 += dy;
+                this.x += dx; // Update base x,y for consistency with selection
+                this.y += dy; // Update base x,y for consistency with selection
+            }
+        }
+
+        class TextElement extends BaseElement {
+            constructor(x, y, text, strokeColor, strokeWidth, opacity) {
+                super(x, y, strokeColor, 'transparent', strokeWidth, opacity);
+                this.type = 'text';
+                this.text = text;
+                this.fontSize = this.strokeWidth * 8; // Calculated font size
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.font = `${this.fontSize}px Inter, sans-serif`;
+                ctx.fillStyle = this.strokeColor;
+                ctx.globalAlpha = this.opacity;
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+
+            containsPoint(px, py) {
+                const ctx = document.getElementById('designCanvas').getContext('2d');
+                ctx.font = `${this.fontSize}px Inter, sans-serif`;
+                const textMetrics = ctx.measureText(this.text);
+                const textWidth = textMetrics.width;
+                const textHeight = this.fontSize; // Approximation of text height for bounding box
+
+                // Account for text baseline (usually 'alphabetic' for fillText, meaning y is at the baseline)
+                // So, top of text is y - textHeight, bottom is y.
+                return px >= this.x && px <= this.x + textWidth &&
+                       py >= this.y - textHeight && py <= this.y + (textHeight * 0.2); // Add a small buffer below baseline
+            }
+        }
+
+        // --- Canvas Manager Class ---
+        class CanvasManager {
+            constructor(canvasId, textInputFieldId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.textInputField = document.getElementById(textInputFieldId);
+
+                this.elements = [];
+                this.drawing = false;
+                this.currentTool = 'freehand'; // Default tool
+                this.strokeColor = '#000000';
+                this.fillColor = '#FFFFFF';
+                this.strokeWidth = 2;
+                this.opacity = 1;
+
+                this.startX = 0;
+                this.startY = 0;
+                this.selectedElement = null;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.laserPos = null; // Stores current position for laser pointer
+
+                // UI display elements for current state
+                this.currentToolDisplay = document.getElementById('current-tool-display');
+                this.currentStrokeColorDisplay = document.getElementById('current-stroke-color-display');
+                this.currentStrokeColorHex = document.getElementById('current-stroke-color-hex');
+                this.currentFillColorDisplay = document.getElementById('current-fill-color-display');
+                this.currentFillColorHex = document.getElementById('current-fill-color-hex');
+
+
+                this.setupEventListeners();
+                this.resizeCanvas();
+                this.updateUIIndicators(); // Initial update of indicators
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            // Sets up all event listeners for canvas and UI controls
+            setupEventListeners() {
+                // Canvas drawing/selection events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('mouseout', (e) => this.handleMouseUp(e)); // Stop drawing if mouse leaves
+
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // Prevent scrolling
+                    const touch = e.touches[0];
+                    this.handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+                }, { passive: false });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault(); // Prevent scrolling
+                    const touch = e.touches[0];
+                    this.handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+                }, { passive: false });
+
+                this.canvas.addEventListener('touchend', (e) => this.handleMouseUp(e));
+
+                // UI control events
+                document.querySelectorAll('.tool-button').forEach(button => {
+                    button.addEventListener('click', () => this.setTool(button.id.replace('tool-', ''), button));
+                });
+
+                document.getElementById('stroke-color').addEventListener('input', (e) => {
+                    this.strokeColor = e.target.value;
+                    this.updateUIIndicators();
+                });
+                document.getElementById('fill-color').addEventListener('input', (e) => {
+                    this.fillColor = e.target.value;
+                    this.updateUIIndicators();
+                });
+                document.getElementById('stroke-width').addEventListener('input', (e) => {
+                    this.strokeWidth = parseInt(e.target.value);
+                    document.getElementById('stroke-width-value').textContent = `${this.strokeWidth}px`;
+                });
+                document.getElementById('opacity').addEventListener('input', (e) => {
+                    this.opacity = parseInt(e.target.value) / 100;
+                    document.getElementById('opacity-value').textContent = `${e.target.value}%`;
+                });
+
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', () => {
+                        this.strokeColor = swatch.dataset.color;
+                        document.getElementById('stroke-color').value = swatch.dataset.color;
+                        this.updateUIIndicators();
+                    });
+                });
+                document.querySelectorAll('.fill-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', () => {
+                        this.fillColor = swatch.dataset.color;
+                        document.getElementById('fill-color').value = swatch.dataset.color;
+                        this.updateUIIndicators();
+                    });
+                });
+
+                document.getElementById('decrease-stroke').addEventListener('click', () => {
+                    if (this.strokeWidth > 1) {
+                        this.strokeWidth--;
+                        document.getElementById('stroke-width').value = this.strokeWidth;
+                        document.getElementById('stroke-width-value').textContent = `${this.strokeWidth}px`;
+                    }
+                });
+                document.getElementById('increase-stroke').addEventListener('click', () => {
+                    if (this.strokeWidth < 20) {
+                        this.strokeWidth++;
+                        document.getElementById('stroke-width').value = this.strokeWidth;
+                        document.getElementById('stroke-width-value').textContent = `${this.strokeWidth}px`;
+                    }
+                });
+
+                document.getElementById('clear-canvas').addEventListener('click', () => this.clearCanvas());
+
+                // Text input field events
+                this.textInputField.addEventListener('blur', () => this.handleTextInputBlur());
+                this.textInputField.addEventListener('keydown', (e) => this.handleTextInputKeydown(e));
+                this.canvas.addEventListener('dblclick', (e) => this.handleCanvasDoubleClick(e));
+
+            }
+
+            // Adjust canvas size to fill its parent container
+            resizeCanvas() {
+                const parent = this.canvas.parentElement;
+                this.canvas.width = parent.clientWidth;
+                this.canvas.height = parent.clientHeight;
+                this.drawAllElements();
+            }
+
+            // Gets mouse/touch position relative to the canvas
+            getCanvasPos(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
+
+            // Main drawing logic: Clears canvas and redraws all stored elements
+            drawAllElements() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.elements.forEach(el => el.draw(this.ctx));
+
+                // Draw temporary laser pointer if active
+                if (this.currentTool === 'laser' && this.laserPos) {
+                    this.ctx.save();
+                    this.ctx.fillStyle = 'red';
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.laserPos.x, this.laserPos.y, 5, 0, 2 * Math.PI); // Red dot
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+
+            // Handles tool selection logic
+            setTool(toolName, clickedButton) {
+                // Remove active state from all tool buttons
+                document.querySelectorAll('.tool-button').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                    btn.classList.add('text-gray-700', 'hover:bg-gray-200');
+                });
+
+                // Add active state to the clicked button
+                if (clickedButton) {
+                    clickedButton.classList.remove('text-gray-700', 'hover:bg-gray-200');
+                    clickedButton.classList.add('bg-blue-500', 'text-white');
+                }
+
+                this.currentTool = toolName;
+                this.textInputField.classList.add('hidden'); // Hide text input when switching tools
+                this.selectedElement = null; // Deselect any element
+                this.canvas.style.cursor = this.currentTool === 'select' ? 'grab' : (this.currentTool === 'eraser' ? 'cell' : 'crosshair');
+                
+                // Clear laser position if switching from laser tool
+                if (this.currentTool !== 'laser') {
+                    this.laserPos = null;
+                }
+
+                this.drawAllElements(); // Redraw to clear any selection highlight or previous laser dot
+                this.updateUIIndicators(); // Update indicators after tool changes
+            }
+
+            // Update UI elements to reflect current tool and color settings
+            updateUIIndicators() {
+                const toolNameMap = {
+                    'freehand': 'Freehand',
+                    'rectangle': 'Rectangle',
+                    'circle': 'Circle',
+                    'line': 'Line',
+                    'text': 'Text',
+                    'select': 'Select',
+                    'eraser': 'Eraser',
+                    'laser': 'Laser Pointer'
+                };
+                this.currentToolDisplay.textContent = toolNameMap[this.currentTool] || this.currentTool;
+                this.currentStrokeColorDisplay.style.backgroundColor = this.strokeColor;
+                this.currentStrokeColorHex.textContent = this.strokeColor.toUpperCase();
+                this.currentFillColorDisplay.style.backgroundColor = this.fillColor;
+                this.currentFillColorHex.textContent = this.fillColor.toUpperCase();
+            }
+
+            // Clears all elements from the canvas
+            clearCanvas() {
+                this.elements = [];
+                this.drawAllElements();
+                this.textInputField.classList.add('hidden');
+                this.selectedElement = null;
+                this.laserPos = null; // Also clear laser position on clear
+            }
+
+            // --- Mouse/Touch Event Handlers ---
+
+            handleMouseDown(e) {
+                const pos = this.getCanvasPos(e);
+                this.startX = pos.x;
+                this.startY = pos.y;
+                this.drawing = true;
+
+                if (this.currentTool === 'freehand') {
+                    const newFreehand = new FreehandElement(this.startX, this.startY, this.strokeColor, this.strokeWidth, this.opacity);
+                    this.elements.push(newFreehand);
+                } else if (this.currentTool === 'text') {
+                    // Prepare text input field for new text
+                    this.textInputField.style.left = `${e.clientX}px`;
+                    this.textInputField.style.top = `${e.clientY}px`;
+                    this.textInputField.value = '';
+                    this.textInputField.classList.remove('hidden');
+                    this.textInputField.focus();
+                    // Create a temporary TextElement to track position; finalize on blur
+                    this.selectedElement = new TextElement(this.startX, this.startY, '', this.strokeColor, this.strokeWidth, this.opacity);
+                } else if (this.currentTool === 'select') {
+                    this.selectedElement = this.getElementAtPosition(this.startX, this.startY);
+                    if (this.selectedElement) {
+                        this.offsetX = this.startX - this.selectedElement.x;
+                        this.offsetY = this.startY - this.selectedElement.y;
+                        this.canvas.style.cursor = 'grabbing';
+                    } else {
+                        this.canvas.style.cursor = 'grab';
+                    }
+                } else if (this.currentTool === 'eraser') {
+                    // Initial erase on mousedown
+                    this.performErase(this.startX, this.startY);
+                } else if (this.currentTool === 'laser') {
+                    this.laserPos = { x: this.startX, y: this.startY };
+                    this.drawAllElements();
+                }
+                this.drawAllElements(); // Redraw for immediate feedback (e.g., selection highlight)
+            }
+
+            handleMouseMove(e) {
+                if (!this.drawing) return;
+                const pos = this.getCanvasPos(e);
+                const currentX = pos.x;
+                const currentY = pos.y;
+
+                if (this.currentTool === 'freehand') {
+                    const lastFreehand = this.elements[this.elements.length - 1];
+                    if (lastFreehand && lastFreehand.type === 'freehand') {
+                        lastFreehand.addPoint(currentX, currentY);
+                    }
+                    this.drawAllElements(); // Redraw continuously for smooth freehand
+                } else if (this.currentTool === 'rectangle' || this.currentTool === 'circle' || this.currentTool === 'line') {
+                    this.drawAllElements(); // Clear and redraw existing elements
+                    this.ctx.save();
+                    this.ctx.strokeStyle = this.strokeColor;
+                    this.ctx.fillStyle = this.fillColor;
+                    this.ctx.lineWidth = this.strokeWidth;
+                    this.ctx.globalAlpha = this.opacity;
+                    this.ctx.beginPath();
+
+                    if (this.currentTool === 'rectangle') {
+                        this.ctx.rect(this.startX, this.startY, currentX - this.startX, currentY - this.startY);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    } else if (this.currentTool === 'circle') {
+                        const radius = Math.sqrt(Math.pow(currentX - this.startX, 2) + Math.pow(currentY - this.startY, 2));
+                        this.ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    } else if (this.currentTool === 'line') {
+                        this.ctx.moveTo(this.startX, this.startY);
+                        this.ctx.lineTo(currentX, currentY);
+                        this.ctx.stroke();
+                    }
+                    this.ctx.restore();
+                } else if (this.currentTool === 'select' && this.selectedElement) {
+                    const dx = currentX - (this.startX);
+                    const dy = currentY - (this.startY);
+
+                    if (this.selectedElement.type === 'line') {
+                        this.selectedElement.move(dx, dy); // Line has its own move logic
+                    } else {
+                        this.selectedElement.x = currentX - this.offsetX;
+                        this.selectedElement.y = currentY - this.offsetY;
+                    }
+
+                    this.startX = currentX; // Update start for continuous drag calculation
+                    this.startY = currentY;
+                    this.drawAllElements();
+                } else if (this.currentTool === 'eraser') {
+                    this.performErase(currentX, currentY);
+                    this.drawAllElements(); // Redraw after erasing
+                } else if (this.currentTool === 'laser') {
+                    this.laserPos = { x: currentX, y: currentY };
+                    this.drawAllElements(); // Redraw to update laser position
+                }
+            }
+
+            handleMouseUp(e) {
+                if (!this.drawing) return;
+                this.drawing = false;
+                const pos = this.getCanvasPos(e);
+                const endX = pos.x;
+                const endY = pos.y;
+
+                if (this.currentTool === 'rectangle') {
+                    this.elements.push(new RectangleElement(
+                        Math.min(this.startX, endX),
+                        Math.min(this.startY, endY),
+                        Math.abs(endX - this.startX),
+                        Math.abs(endY - this.startY),
+                        this.strokeColor, this.fillColor, this.strokeWidth, this.opacity
+                    ));
+                } else if (this.currentTool === 'circle') {
+                    const radius = Math.sqrt(Math.pow(endX - this.startX, 2) + Math.pow(endY - this.startY, 2));
+                    this.elements.push(new CircleElement(
+                        this.startX, this.startY, radius,
+                        this.strokeColor, this.fillColor, this.strokeWidth, this.opacity
+                    ));
+                } else if (this.currentTool === 'line') {
+                    this.elements.push(new LineElement(
+                        this.startX, this.startY, endX, endY,
+                        this.strokeColor, this.strokeWidth, this.opacity
+                    ));
+                }
+                this.drawAllElements(); // Final redraw after element is added
+                if (this.currentTool === 'select') {
+                    this.selectedElement = null; // Deselect after moving
+                    this.canvas.style.cursor = 'grab';
+                } else if (this.currentTool === 'laser') {
+                    this.laserPos = null; // Hide laser on mouse up
+                    this.drawAllElements(); // Redraw to remove laser dot
+                }
+            }
+
+            // Logic to erase elements
+            performErase(x, y) {
+                const eraseRadius = 10; // Area around the cursor for erasing
+                // Filter out elements that intersect with the erase area
+                this.elements = this.elements.filter(el => {
+                    // For more complex shapes, you'd need more sophisticated intersection logic
+                    // For now, using containsPoint which is good for basic shapes
+                    // and a simplified bounding box check for freehand.
+                    if (el.type === 'freehand') {
+                        // Check if any point of the freehand path is near the eraser
+                        return !el.points.some(p => Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2)) < eraseRadius);
+                    } else if (el.type === 'text') {
+                        // For text, check if the eraser is within its bounding box
+                        const ctx = this.ctx; // Use the manager's context
+                        ctx.font = `${el.fontSize}px Inter, sans-serif`;
+                        const textMetrics = ctx.measureText(el.text);
+                        const textWidth = textMetrics.width;
+                        const textHeight = el.fontSize;
+                        const textTop = el.y - textHeight;
+                        const textBottom = el.y + (textHeight * 0.2); // Small buffer below baseline
+
+                        const intersects = x >= el.x - eraseRadius && x <= el.x + textWidth + eraseRadius &&
+                                           y >= textTop - eraseRadius && y <= textBottom + eraseRadius;
+                        return !intersects; // Remove if intersects
+                    }
+                    // For other shapes, use their containsPoint method
+                    return !el.containsPoint(x, y);
+                });
+            }
+
+
+            // Finds the topmost element at a given canvas position
+            getElementAtPosition(x, y) {
+                for (let i = this.elements.length - 1; i >= 0; i--) { // Iterate backwards to select top-most element
+                    if (this.elements[i].containsPoint(x, y)) {
+                        return this.elements[i];
+                    }
+                }
+                return null;
+            }
+
+            // --- Text Input Handlers ---
+
+            handleTextInputBlur() {
+                if (this.selectedElement && this.selectedElement.type === 'text') {
+                    this.selectedElement.text = this.textInputField.value;
+                    this.selectedElement.fontSize = this.selectedElement.strokeWidth * 8; // Update font size based on current stroke width
+                    if (this.selectedElement.text.trim() !== '') {
+                        // Only add to elements if it's a new element and not already present
+                        const existingIndex = this.elements.findIndex(el => el === this.selectedElement);
+                        if (existingIndex === -1) {
+                             this.elements.push(this.selectedElement);
+                        }
+                    } else {
+                        // If text is empty, remove the element if it was already added
+                        const index = this.elements.indexOf(this.selectedElement);
+                        if (index > -1) {
+                            this.elements.splice(index, 1);
+                        }
+                    }
+                    this.textInputField.classList.add('hidden');
+                    this.drawAllElements();
+                    this.selectedElement = null;
+                }
+            }
+
+            handleTextInputKeydown(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { // Shift+Enter for new line
+                    e.preventDefault(); // Prevent default enter behavior
+                    this.textInputField.blur(); // Trigger blur to save text
+                }
+            }
+
+            handleCanvasDoubleClick(e) {
+                if (this.currentTool === 'select') {
+                    const pos = this.getCanvasPos(e);
+                    const clickedElement = this.getElementAtPosition(pos.x, pos.y);
+                    if (clickedElement && clickedElement.type === 'text') {
+                        this.selectedElement = clickedElement; // Set as selected for editing
+                        this.textInputField.value = this.selectedElement.text;
+                        this.textInputField.style.left = `${e.clientX}px`;
+                        this.textInputField.style.top = `${e.clientY}px`;
+                        this.textInputField.classList.remove('hidden');
+                        this.textInputField.focus();
+                        this.drawAllElements(); // Redraw to clear any existing highlight
+                    }
+                }
+            }
+        }
+
+        // Initialize the Canvas Manager when the DOM is loaded
+        window.addEventListener('load', () => {
+            new CanvasManager('designCanvas', 'text-input-field');
+        });
+
+    </script>
+</body>
+</html>
